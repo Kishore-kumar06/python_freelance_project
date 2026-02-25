@@ -1,0 +1,35 @@
+python_freelance_project
+|------ reference_files/
+|       |---- GasTariffSource
+|       |---- Oiltariff.xlsx
+|       |---- project_structure.txt
+|
+|------ src/
+|       |----__init__.py
+|       |---- data_processing/
+|       |     |---- logger.py
+|       |     |---- csv_operations.py
+|       |     |---- directory_actions.py
+|       |     |---- pandas_operations.py
+|       |---- selenium_bot/
+|       |     |---- __init__.py
+|       |     |---- selenium_actions.py
+|       |---- pdf_extractor/
+|       |     |---- __init__.py
+|       |     |---- extractor.py
+|
+|------ data/
+|       |---- source_files/
+|       |     |---- pipelinenames.csv
+|       |     |---- source_url.csv
+|       |---- input_files/   
+|       |     |---- pipelinename.pdf  
+|       |---- output_files/
+|	      |---- extracted_pipelinename.csv
+|	
+|------ testing/
+|       |---- code_tests.py
+|
+|---- main.py		
+|---- requirements.txt
+|---- Readme.md
