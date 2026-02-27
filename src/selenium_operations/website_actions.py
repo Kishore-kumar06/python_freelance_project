@@ -103,6 +103,69 @@ def click_actual_tariff_option(driver, xpath):
         print(f"Error clicking on Actual Tariff option: {e}")
 
 
+def find_last_record_in_table(driver, table_xpath):
+    try:
+        table = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.XPATH, table_xpath))
+        )
+        rows = table.find_elements(By.TAG_NAME, "tr")
+        if len(rows) > 1:
+            last_row = rows[-1]
+            cells = last_row.find_elements(By.TAG_NAME, "td")
+            # return [cell.text.strip() for cell in cells]
+            effective_button = cells[3].find_element(By.TAG_NAME, "a")
+            return effective_button
+        else:
+            print("No records found in the table.")
+            return None
+    except (NoSuchElementException, TimeoutException) as e:
+        print(f"Error finding last record in table: {e}")
+        return None
+
+
+def click_effective_file_option(driver, xpath):
+    try:
+        effective_option = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.XPATH, xpath))
+        )
+        effective_option.click()
+        print("Clicked on Effective File option")
+    except (NoSuchElementException, TimeoutException) as e:
+        print(f"Error clicking on Effective File option: {e}")
+
+    
+
+def switch_to_iframe(driver, xpath):
+    try:
+        iframe_element = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.XPATH, xpath))
+        )
+        driver.switch_to.frame(iframe_element)
+        print("Switched to iframe")
+    except (NoSuchElementException, TimeoutException) as e:
+        print(f"Error switching to iframe: {e}")
+
+
+def click_download_file_option(driver, xpath):
+    try:
+        download_option = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.XPATH, xpath))
+        )
+        download_option.click()
+        print("Clicked on Download File option")
+    except (NoSuchElementException, TimeoutException) as e:
+        print(f"Error clicking on Download File option: {e}")
+
+def click_close(driver, xpath): 
+    try:
+        close_button = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.XPATH, xpath))
+        )
+        close_button.click()
+        print("Clicked on Close button")
+    except (NoSuchElementException, TimeoutException) as e:
+        print(f"Error clicking on Close button: {e}")
+
 def get_company_name_from_results(driver, xpath):
     try:
         company_name_element = WebDriverWait(driver, 10).until(

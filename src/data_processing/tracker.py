@@ -18,7 +18,7 @@ def create_tracker_files(path, pipelines, company_name, tariff_program, time_tak
 
 
 
-def create_excel_tracker_files(main_path, path, pipelines, company_name, tariff_program, time_taken):
+def create_excel_tracker_files(main_path, path, pipelines, company_name, tariff_program, is_effective, file_status, time_taken):
     
     tracker_path = os.path.join(main_path, path)
     
@@ -26,9 +26,9 @@ def create_excel_tracker_files(main_path, path, pipelines, company_name, tariff_
         os.makedirs(tracker_path)
 
     today = datetime.date.today()
-    tracker_file = os.path.join(tracker_path, f"track_{today}.xlsx")
+    tracker_file = os.path.join(tracker_path, f"file_status_record_{today}.xlsx")
 
-    new_entry = [pipelines, company_name, tariff_program, time_taken]
+    new_entry = [pipelines, company_name, tariff_program, is_effective, file_status, time_taken]
 
     if os.path.exists(tracker_file):
         wb = load_workbook(tracker_file)
@@ -37,7 +37,7 @@ def create_excel_tracker_files(main_path, path, pipelines, company_name, tariff_
     else:
         wb = Workbook()
         ws = wb.active
-        ws.append(['Pipeline', 'Company Name', 'Tariff Title', 'Time Taken'])
+        ws.append(['Pipeline', 'Company Name', 'Tariff Title', 'Effective Status', 'File Status', 'Time Taken'])
         ws.append(new_entry)
     
     wb.save(tracker_file)
@@ -54,5 +54,7 @@ def create_pipeline_folder(mainpath, path, pipeline_name):
     if not os.path.exists(pipeline_folder):
         os.makedirs(pipeline_folder)
         print(f"Folder created for {pipeline_name}")
+        return pipeline_folder
     else:
         print(f"Folder already exists for {pipeline_name}") 
+        return None

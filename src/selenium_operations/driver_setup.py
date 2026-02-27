@@ -1,14 +1,24 @@
 from selenium import webdriver
+import os
 
 
-def driver_options():
+def driver_options(download_folder):
+    
+    # Set download preferences
+    prefs = {
+        "download.default_directory": os.path.abspath(download_folder),
+        "download.prompt_for_download": False,
+        "download.directory_upgrade": True,
+        "safebrowsing.enabled": True
+    }
     options = webdriver.ChromeOptions()
+    options.add_experimental_option("prefs", prefs)
     options.add_argument("--headless")  # Run in headless mode
     options.add_argument("--disable-gpu")  # Disable GPU acceleration
     # options.add_argument("--window-size=1920,1080")  # Set window size
     return options
 
-def open_browser(browser_name, options=None):
+def open_browser(browser_name, options):
     try:
         if browser_name.lower() == "chrome":
             driver = webdriver.Chrome(options=options)

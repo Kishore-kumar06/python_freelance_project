@@ -8,7 +8,17 @@ no_files_message = "//table[@id='Content1_dxgrdTariffs_DXMainTable']/tbody/tr[3]
 
 oil_tariff_program_option = "//td[@id='Content1_dxgrdTariffs_tccell0_1']/a"
 
-actual_tariff_option = "//a[@class='Content1_tvSections_0 Content1_tvSections_1']"				
+actual_tariff_option = "//a[@class='Content1_tvSections_0 Content1_tvSections_1']"	
+
+ferc_table = "//table[@id='Content1_dxgrdTariffs_DXMainTable']"
+
+effective_file_option = "//td[@id='Content1_dxgrdTariffs_tccell4_3']/a"
+
+iframe = "//iframe[@id='GB_frame']"
+
+download_file_option = "//input[@id='Content1_btnDownload']"
+
+close = "//input[@id='Content1_btnClose']"
 
 # text
 
