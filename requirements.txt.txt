@@ -1,0 +1,6 @@
+pandas
+os
+csv
+selenium
+datetime
+logging
