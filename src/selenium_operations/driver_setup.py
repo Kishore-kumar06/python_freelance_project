@@ -1,7 +1,7 @@
 from selenium import webdriver
 import os
 
-
+# This function sets up the browser options, including download preferences, and returns the configured options object.
 def driver_options(download_folder):
     
     # Set download preferences
@@ -13,11 +13,11 @@ def driver_options(download_folder):
     }
     options = webdriver.ChromeOptions()
     options.add_experimental_option("prefs", prefs)
-    options.add_argument("--headless")  # Run in headless mode
+    # options.add_argument("--headless")  # Run in headless mode
     options.add_argument("--disable-gpu")  # Disable GPU acceleration
-    # options.add_argument("--window-size=1920,1080")  # Set window size
     return options
 
+# This function opens the specified browser with the given options and returns the driver instance.
 def open_browser(browser_name, options):
     try:
         if browser_name.lower() == "chrome":
@@ -34,7 +34,7 @@ def open_browser(browser_name, options):
         print(f"Error opening the browser: {e}")
         return None
     
-
+# This function closes the browser instance if it exists, handling any exceptions that may occur during the process.
 def close_browser(driver):
     try:
         if driver is not None:
@@ -45,7 +45,7 @@ def close_browser(driver):
     except Exception as e:
         print(f"Error closing the browser: {e}")
 
-
+# This function quits the browser instance if it exists, handling any exceptions that may occur during the process. Quitting the browser will close all associated windows and end the session.
 def quit_browser(driver):
     try:
         if driver is not None:
@@ -56,7 +56,7 @@ def quit_browser(driver):
     except Exception as e:
         print(f"Error quitting the browser: {e}")
 
-
+# This function navigates back in the browser history if the driver instance exists, handling any exceptions that may occur during the process.
 def back_browser(driver):
     try:
         if driver is not None:

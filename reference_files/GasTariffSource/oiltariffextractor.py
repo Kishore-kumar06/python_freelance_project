@@ -151,7 +151,7 @@ def main():
     """
     Main execution logic for the script.
     """
-    pdf_path = r"OilTariffFiles\Pony Express Pipeline.PDF"
+    pdf_path = r"D:\Project\python_freelance_project\reference_files\GasTariffSource\OilTariffFiles\Pony Express Pipeline.PDF"
     extractor = OilTariffExtractor()
 
     df_rates = extractor.extract(pdf_path)
