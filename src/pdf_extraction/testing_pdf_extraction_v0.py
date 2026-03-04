@@ -2,154 +2,109 @@ import pdfplumber
 import pandas as pd
 import re
 
-
-def extract_pipeline_metadata(pdf):
-    pipeline_name = ""
-    effective_date = ""
-
-    page1_text = pdf.pages[0].extract_text()
-
-    # Pipeline Name
-    match_pipeline = re.search(r"(.*Pipeline.*LLC)", page1_text, re.IGNORECASE)
-    if match_pipeline:
-        pipeline_name = match_pipeline.group(1).strip()
-
-    # Effective Date
-    match_effective = re.search(r"EFFECTIVE:\s*(.*)", page1_text, re.IGNORECASE)
-    if match_effective:
-        effective_date = match_effective.group(1).strip()
-
-    return pipeline_name, effective_date
+pdf_path = r"D:\Project\python_freelance_project\reference_files\GasTariffSource\OilTariffFiles\Pony Express Pipeline.PDF"
 
 
-def split_complex(val):
-    if not val:
+
+output_csv = "Page9_Output.csv"
+
+
+def clean(text):
+    if text:
+        return re.sub(r"\s+", " ", text.replace("\n", " ")).strip()
+    return ""
+
+
+def split_origins(origin_cell):
+    """
+    Split multi-line origin cell into separate origins
+    """
+    if not origin_cell:
         return []
 
-    parts = re.split(
-        r",|\s+Located\s+in\s+|\s+in\s+",
-        val,
-        flags=re.IGNORECASE,
-    )
-    return [p.strip() for p in parts if p.strip()]
+    parts = origin_cell.split("\n")
+    origins = []
+
+    for part in parts:
+        part = clean(part)
+        if part:
+            origins.append(part)
+
+    return origins
 
 
-def extract_rates(pdf):
-    all_records = []
+def extract_page9(pdf_path):
+    results = []
 
-    pipeline_name, effective_date = extract_pipeline_metadata(pdf)
-
-    for page_number, page in enumerate(pdf.pages):
-
-        text = page.extract_text()
-
-        if not text:
-            continue
-
-        # Detect Rate Type
-        rate_type = None
-
-        if "NON-CONTRACT TRANSPORTATION RATES" in text:
-            rate_type = "NON-CONTRACT TRANSPORTATION RATES"
-
-        if "TEMPORARY VOLUME INCENTIVE RATES" in text:
-            rate_type = "TEMPORARY VOLUME INCENTIVE RATES"
-
-        if not rate_type:
-            continue
-
-        expiry_date = ""
-        tier = ""
-        bpd_min = ""
-        bpd_max = ""
-
-        # Expiry Date (Page 5 logic)
-        expiry_match = re.search(r"expire[s]?\s+on\s+(.*)", text, re.IGNORECASE)
-        if expiry_match:
-            expiry_date = expiry_match.group(1).strip()
-
-        # Tier
-        tier_match = re.search(r"Rate\s*Tier\s*(\d+)", text, re.IGNORECASE)
-        if tier_match:
-            tier = f"Rate Tier {tier_match.group(1)}"
-
-        # BPD range
-        bpd_values = re.findall(r"\b\d{1,6}\b", text)
-        if len(bpd_values) >= 2:
-            bpd_min = bpd_values[0]
-            bpd_max = bpd_values[1]
-
+    with pdfplumber.open(pdf_path) as pdf:
+        page = pdf.pages[8]  # Page 9
         tables = page.extract_tables()
 
-        if not tables:
-            continue
-
-        largest_table = max(tables, key=lambda t: len(t) if t else 0)
-
-        cleaned_table = []
-        for row in largest_table:
-            cleaned_row = [
-                cell.replace("\n", " ").strip() if cell else ""
-                for cell in row
-            ]
-            if any(cell for cell in cleaned_row):
-                cleaned_table.append(cleaned_row)
-
-        if len(cleaned_table) < 3:
-            continue
-
-        dest_headers = cleaned_table[1]
-
-        for row in cleaned_table[2:]:
-
-            if len(row) < 2:
+        for table in tables:
+            if not table or len(table) < 2:
                 continue
 
-            origin = row[1].strip()
-            if not origin:
+            header = [clean(col).lower() if col else "" for col in table[0]]
+
+            origin_idx = None
+            destination_idx = None
+            rate_indexes = []
+
+            # Detect columns dynamically
+            for i, col in enumerate(header):
+                if "origin" in col:
+                    origin_idx = i
+                elif "destination" in col:
+                    destination_idx = i
+                elif "rate" in col:
+                    rate_indexes.append(i)
+
+            if origin_idx is None or destination_idx is None:
                 continue
 
-            for col_idx in range(2, len(row)):
+            previous_destination = ""
 
-                if col_idx >= len(dest_headers):
-                    break
+            for row in table[1:]:
+                row = [cell if cell else "" for cell in row]
 
-                destination = dest_headers[col_idx].strip()
-                rate = row[col_idx].strip()
+                origin_cell = row[origin_idx] if origin_idx < len(row) else ""
+                destination = row[destination_idx] if destination_idx < len(row) else ""
 
-                if not rate:
+                destination = clean(destination)
+
+                if destination:
+                    previous_destination = destination
+                else:
+                    destination = previous_destination
+
+                # 🔥 Split multiple origins
+                origins = split_origins(origin_cell)
+
+                if not origins:
                     continue
 
-                record = {
-                    "Pipeline": pipeline_name,
-                    "EffectiveDate": effective_date,
-                    "RateType": rate_type,
-                    "Origin": origin,
-                    "Destination": destination,
-                    "Rate": rate,
-                    "ExpiryDate": expiry_date,
-                    "RateTier": tier,
-                    "BPDMin": bpd_min,
-                    "BPDMax": bpd_max,
-                }
+                # 🔥 CROSS JOIN origins × rates
+                for origin in origins:
+                    for rate_col in rate_indexes:
+                        if rate_col < len(row):
+                            rate_value = clean(row[rate_col])
 
-                all_records.append(record)
+                            if rate_value:  # DO NOT ignore n/a
+                                results.append({
+                                    "Origin": origin,
+                                    "Destination": destination,
+                                    "Rate": rate_value
+                                })
 
-    return pd.DataFrame(all_records)
+    df = pd.DataFrame(results).drop_duplicates().reset_index(drop=True)
+    return df
 
 
-# ---------------- EXECUTION ---------------- #
+# Run extraction
+df_page9 = extract_page9(pdf_path)
 
-if __name__ == "__main__":
-   
-    file_name = r"D:\Project\python_freelance_project\reference_files\GasTariffSource\OilTariffFiles\Pony Express Pipeline.PDF"
+print(df_page9)
 
-    with pdfplumber.open(file_name) as pdf:
-        df_final = extract_rates(pdf)
+df_page9.to_csv(output_csv, index=False)
 
-    if not df_final.empty:
-        df_final.to_csv("extracted_rates_final.csv", index=False)
-        print("Data exported successfully.")
-        print(df_final.head())
-    else:
-        print("No data extracted.")
+print(f"\nPage 9 extraction completed → {output_csv}")
