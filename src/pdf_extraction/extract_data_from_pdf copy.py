@@ -338,7 +338,7 @@ def extract_page6(pdf):
 
     # with pdfplumber.open(pdf_path) as pdf:
 
-    for i, page in enumerate(pdf.pages[5:6]):
+    for i, page in enumerate(pdf.pages[12:13]):
 
         text = page.extract_text()
 
@@ -726,11 +726,11 @@ if __name__ == "__main__":
         # df_rates = extract_page_5(pdf)
         # tariff_data.extend(df_rates)
 
-        # df_rates6 = extract_page6(pdf)
-        # tariff_data.extend(df_rates6)
+        df_rates6 = extract_page6(pdf)
+        tariff_data.extend(df_rates6)
 
-        df_rates = extract_page7(pdf)
-        tariff_data.extend(df_rates)
+        # df_rates = extract_page7(pdf)
+        # tariff_data.extend(df_rates)
         
     final_data = pd.DataFrame(tariff_data)
     # final_data = final_data.drop_duplicates()
@@ -740,7 +740,7 @@ if __name__ == "__main__":
 
         # Export to CSV
 
-        output_file = "extracted_rates_vfinal_13.csv"
+        output_file = "extracted_rates_vfinal_15.csv"
         final_data.to_csv(output_file, index=False)
         print(f"\nData successfully exported to {output_file}")
     else:

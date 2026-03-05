@@ -1,0 +1,6 @@
+Pipeline Name,PointfOrigin,PointOfDestination,LiquidTariffNumber,Effective Date,End Date,TariffStatus,RateTier,RateType,TermYear,MinBPD,MaxBPD,AcreageDedicationMinAcres,AcreageDedicationMaxAcres,LiquidRateCentsPerBbl,SurchargeCentsPerBbl,LiquidFuelType
+"TALLGRASS PONY EXPRESS PIPELINE, LLC","Guernsey Located in Platte County, WY","McPherson Located in McPherson County, KS",,01-12-2025,,Effective,,CONTRACT RATES,,10000,10000,,,249.894,,Crude
+"TALLGRASS PONY EXPRESS PIPELINE, LLC","Carpenter Located in Laramie County, WY","Sterling Located in Logan County, CO",,01-12-2025,,Effective,,CONTRACT RATES,,3000,4999,,,130.08,,Crude
+"TALLGRASS PONY EXPRESS PIPELINE, LLC","Carpenter Located in Laramie County, WY","Sterling Located in Logan County, CO",,01-12-2025,,Effective,Incremental Committed Shipper Rates,CONTRACT RATES,,3000,4999,,,86.73,,Crude
+"TALLGRASS PONY EXPRESS PIPELINE, LLC","Guernsey Located in Platte County, WY","Sterling Located in Logan County, CO",,01-12-2025,,Effective,,CONTRACT RATES,,0,15000,,,47.68,,Crude
+"TALLGRASS PONY EXPRESS PIPELINE, LLC","Carpenter Located in Laramie County, WY","Sterling Located in Logan County, CO",,01-12-2025,,Effective,,CONTRACT RATES,,13000,,,,102.00,,Crude
