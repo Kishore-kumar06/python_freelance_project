@@ -1,4 +1,0 @@
-Pipeline Name,PointfOrigin,PointOfDestination,LiquidTariffNumber,Effective Date,End Date,TariffStatus,RateTier,RateType,TermYear,MinBPD,MaxBPD,AcreageDedicationMinAcres,AcreageDedicationMaxAcres,LiquidRateCentsPerBbl,SurchargeCentsPerBbl,LiquidFuelType
-"TALLGRASS PONY EXPRESS PIPELINE, LLC","Platteville Located in Weld County, CO","Sterling Located in Logan County, CO",,01-12-2025,28-02-2026,Effective,,,,,,,,5.00,,Crude
-"TALLGRASS PONY EXPRESS PIPELINE, LLC","Buckingham Located in Weld County, CO","Sterling Located in Logan County, CO",,01-12-2025,28-02-2026,Effective,,,,,,,,13.00,,Crude
-"TALLGRASS PONY EXPRESS PIPELINE, LLC","Carpenter Located in Laramie County, WY","Various Cushing Destinations Located in Payne County, OK2",,01-12-2025,28-02-2026,Effective,,,,,,,,200.00,,Crude
