@@ -231,6 +231,20 @@ def extract_rate_tiers(text):
     except Exception as e:
         print(f"Error extracting rate tiers: {e}")
         return ""
+    
+
+def extract_rate_tier_label(text):
+    """
+    Extract only Tier / Rate Tier values.
+    Examples:
+      Tier I -> Rate Tier I
+      Tier 2 -> Rate Tier 2
+    """
+    text = clean(text)
+    m = re.search(r"\b(?:Rate\s*Tier|Tier)\s*(\d+|[IVXLC]+)\b", text, re.IGNORECASE)
+    if m:
+        return f"Rate Tier {m.group(1).upper()}"
+    return ""
 
 
 def extract_rates_table_for_Page3_4_12_13_14_15(pdf, start_Page_number, end_page_number):
@@ -377,7 +391,7 @@ def extract_rates_table_for_Page3_4_12_13_14_15(pdf, start_Page_number, end_page
         if unpivoted_data:
             df_final = unpivoted_data
     
-    tariff_rate_type = ""  # Reset for next page
+    # tariff_rate_type = ""  # Reset for next page
     return df_final
 
  
@@ -1100,11 +1114,11 @@ def extract_term_year_from_page10_text(text):
         years = int(match[0]) if match[0] else 0
         months = int(match[1]) if match[1] else 0
 
-        term_value = years + (months / 12)
-        if term_value.is_integer():
-            term_map[idx] = str(int(term_value))
+        # Build output format
+        if months > 0:
+            term_map[idx] = f"{years}.{months}"
         else:
-            term_map[idx] = str(round(term_value, 2))
+            term_map[idx] = str(years)
 
     return term_map
 
@@ -1283,19 +1297,48 @@ def find_col_index(header_low, include_terms, exclude_terms=None):
     for i, h in enumerate(header_low):
         if all(term in h for term in include_terms) and not any(term in h for term in exclude_terms):
             return i
-    return None
+    return 
+    
+
+def get_val(row, idx):
+    if idx is None or idx >= len(row):
+        return ""
+    return clean(row[idx])
+
+
+def split_origins_val(origin_cell):
+    """
+    Split combined origins at boundaries ending in ', XX'
+    where XX is a 2-letter state code.
+
+    Example:
+    'Guernsey Located in Platte County, WY Sterling Located in Logan County, CO'
+    ->
+    [
+        'Guernsey Located in Platte County, WY',
+        'Sterling Located in Logan County, CO'
+    ]
+    """
+    if not origin_cell:
+        return []
+
+    origin_cell = str(origin_cell).replace("\n", " ")
+    origin_cell = re.sub(r"\s+", " ", origin_cell).strip()
+
+    parts = re.split(r'(?<=,\s[A-Z]{2})\s+(?=[A-Z])', origin_cell)
+    parts = [clean(p) for p in parts if clean(p)]
+
+    return parts if parts else [clean(origin_cell)]
 
 
 def extract_page11(pdf):
     """
     Page 11 (0-based index 10): CONTRACT VOLUME INCENTIVE RATES
 
-    Handles all table blocks dynamically:
-      1) Main Shipper A / Shipper B table
-      2) Secondary Origin Barrel Rate table
-      3) Buckingham Barrel Rate table
-
-    No hard-coded origin/destination values from the PDF.
+    Fixes included:
+    1) First table exports all 8 records, including both 206.88 values
+    2) Second table splits combined origins correctly
+    3) No hard-coded origin/destination values from PDF
     """
     records = []
     pipeline_name, effective_date = extract_pipeline_metadata(pdf)
@@ -1305,19 +1348,21 @@ def extract_page11(pdf):
 
     tariff_rate_type = extract_tariff_rate_type(text)
     expiry_date_value = extract_expiry_date(text)
-    page_rate_tiers = extract_rate_tiers(text)
 
     tables = page.extract_tables() or []
     if not tables:
         return records
 
     def add_record(origin, dest, rate, rate_tier="", min_bpd="", max_bpd="", term_year=""):
-        rate = clean(rate)
-        if not is_rate_or_na(rate):
+        if rate is None:
             return
 
-        if rate.lower() in ("n/a", "na"):
-            rate = "N/A"
+        rate_str = clean(rate)
+        if not is_rate_or_na(rate_str):
+            return
+
+        if rate_str.lower() in ("n/a", "na"):
+            rate_str = "N/A"
 
         records.append({
             "Pipeline Name": pipeline_name,
@@ -1334,19 +1379,22 @@ def extract_page11(pdf):
             "MaxBPD": max_bpd if max_bpd is not None else "",
             "AcreageDedicationMinAcres": "",
             "AcreageDedicationMaxAcres": "",
-            "LiquidRateCentsPerBbl": rate,
+            "LiquidRateCentsPerBbl": rate_str,
             "SurchargeCentsPerBbl": "",
             "LiquidFuelType": "Crude",
         })
 
     for table in tables:
-        print(table)
         if not table or len(table) < 2:
             continue
+
+        # raw rows preserve line breaks for origin splitting
+        raw_rows = [[("" if c is None else str(c)) for c in row] for row in table]
 
         cleaned = [[clean(c) for c in row] for row in table]
         max_len = max(len(r) for r in cleaned)
         cleaned = [pad_row(r, max_len) for r in cleaned]
+        raw_rows = [pad_row(r, max_len) for r in raw_rows]
 
         flat_text = " ".join([" ".join(r).lower() for r in cleaned])
 
@@ -1362,7 +1410,10 @@ def extract_page11(pdf):
             header_low = [h.lower() for h in header]
 
             tier_col = find_col_index(header_low, ["tier"])
-            mv_col = find_col_index(header_low, ["minimum", "volume"]) or find_col_index(header_low, ["commitment"])
+            mv_col = find_col_index(header_low, ["minimum", "volume"])
+            if mv_col is None:
+                mv_col = find_col_index(header_low, ["commitment"])
+
             origin_col = find_col_index(header_low, ["origin"])
             dest_col = find_col_index(header_low, ["destination"])
             ship_a_incent_col = find_col_index(header_low, ["shipper", "a", "incentive"])
@@ -1375,15 +1426,14 @@ def extract_page11(pdf):
 
             prev_origin = ""
             prev_dest = ""
-            tier_counter = 0
 
             for row in cleaned[header_idx + 1:]:
                 row = pad_row(row, len(header))
 
-                tier_val = get_col_value(row, tier_col)
-                mv_val = get_col_value(row, mv_col)
-                origin = get_col_value(row, origin_col)
-                dest = get_col_value(row, dest_col)
+                tier_val = get_val(row, tier_col)
+                mv_val = get_val(row, mv_col)
+                origin = get_val(row, origin_col)
+                dest = get_val(row, dest_col)
 
                 if origin:
                     prev_origin = origin
@@ -1398,28 +1448,22 @@ def extract_page11(pdf):
                 if not origin or not dest:
                     continue
 
-                # derive min/max from whichever field contains BPD range
                 min_bpd, max_bpd = ("", "")
                 if mv_val and "bpd" in mv_val.lower():
-                    min_bpd, max_bpd = parse_bpd_header_to_minmax(mv_val)
+                    min_bpd, max_bpd = parse_volume_to_minmax(mv_val)
                 elif tier_val and "bpd" in tier_val.lower():
-                    min_bpd, max_bpd = parse_bpd_header_to_minmax(tier_val)
+                    min_bpd, max_bpd = parse_volume_to_minmax(tier_val)
 
-                # use only real tier values from regex if available
-                derived_tier = ""
-                if page_rate_tiers and tier_counter < len(page_rate_tiers):
-                    derived_tier = page_rate_tiers[tier_counter]
-                    tier_counter += 1
-                elif tier_val and re.search(r"\b(?:tier)\s*(\d+|[IVXLC]+)\b", tier_val, re.IGNORECASE):
-                    match = re.search(r"\b(?:tier)\s*(\d+|[IVXLC]+)\b", tier_val, re.IGNORECASE)
-                    if match:
-                        derived_tier = f"Rate Tier {match.group(1).upper()}"
+                derived_tier =  extract_rate_tier_label(tier_val)
+                if not derived_tier:
+                    derived_tier =  extract_rate_tier_label(mv_val)
 
-                a_incent = get_col_value(row, ship_a_incent_col)
-                a_extra = get_col_value(row, ship_a_extra_col)
-                b_incent = get_col_value(row, ship_b_incent_col)
-                b_extra = get_col_value(row, ship_b_extra_col)
+                a_incent = get_val(row, ship_a_incent_col)
+                a_extra = get_val(row, ship_a_extra_col)
+                b_incent = get_val(row, ship_b_incent_col)
+                b_extra = get_val(row, ship_b_extra_col)
 
+                # Export all 4 rate cells independently if present
                 if a_incent:
                     add_record(origin, dest, a_incent, derived_tier, min_bpd, max_bpd)
                 if a_extra:
@@ -1434,7 +1478,7 @@ def extract_page11(pdf):
         # ---------------------------------------------------------
         # TABLE 2: Secondary Origin Barrel Rate table
         # ---------------------------------------------------------
-        if "secondary origin" in flat_text and "barrel rate" in flat_text:
+        if "secondary origin" in flat_text:
             header_idx = find_header_row(cleaned, ["origin", "destination"])
             if header_idx is None:
                 header_idx = find_header_row(cleaned, ["secondary", "origin"])
@@ -1450,26 +1494,92 @@ def extract_page11(pdf):
             dest_col = find_col_index(header_low, ["destination"])
             rate_col = find_col_index(header_low, ["secondary", "origin", "rate"])
 
-            # fallback: detect numeric column as rate col
             if rate_col is None:
                 for i in range(len(header_low)):
-                    sample_vals = [get_col_value(r, i) for r in cleaned[header_idx + 1:]]
+                    sample_vals = [get_val(r, i) for r in cleaned[header_idx + 1:]]
+                    if any(is_rate_or_na(v) for v in sample_vals):
+                        rate_col = i
+                        break
+
+            prev_origin_clean = ""
+            prev_origin_raw = ""
+            prev_dest = ""
+
+            for row_idx in range(header_idx + 1, len(cleaned)):
+                row = pad_row(cleaned[row_idx], len(header))
+                raw_row = pad_row(raw_rows[row_idx], len(header))
+
+                tier_val = get_val(row, tier_col)
+                vol_val = get_val(row, vol_col)
+                rate_val = get_val(row, rate_col)
+
+                origin_clean = get_val(row, origin_col)
+                origin_raw = raw_row[origin_col] if origin_col is not None and origin_col < len(raw_row) else ""
+
+                dest = get_val(row, dest_col)
+
+                if origin_clean:
+                    prev_origin_clean = origin_clean
+                    prev_origin_raw = origin_raw
+                else:
+                    origin_clean = prev_origin_clean
+                    origin_raw = prev_origin_raw
+
+                if dest:
+                    prev_dest = dest
+                else:
+                    dest = prev_dest
+
+                if not origin_clean or not dest or not rate_val:
+                    continue
+
+                min_bpd, max_bpd = ("", "")
+                source_for_bpd = vol_val if vol_val and "bpd" in vol_val.lower() else tier_val
+                if source_for_bpd and "bpd" in source_for_bpd.lower():
+                    min_bpd, max_bpd = parse_volume_to_minmax(source_for_bpd)
+
+                derived_tier = extract_rate_tier_label(tier_val)
+                if not derived_tier:
+                    derived_tier =  extract_rate_tier_label(vol_val)
+
+                origins = split_origins_val(origin_raw if origin_raw else origin_clean)
+
+                for single_origin in origins:
+                    add_record(single_origin, dest, rate_val, derived_tier, min_bpd, max_bpd)
+
+            continue
+
+        # ---------------------------------------------------------
+        # TABLE 3: Buckingham Barrel Rate table
+        # ---------------------------------------------------------
+        if "buckingham barrel rate" in flat_text:
+            header_idx = find_header_row(cleaned, ["origin", "destination"])
+            if header_idx is None:
+                continue
+
+            header = cleaned[header_idx]
+            header_low = [h.lower() for h in header]
+
+            origin_col = find_col_index(header_low, ["origin"])
+            dest_col = find_col_index(header_low, ["destination"])
+            rate_col = find_col_index(header_low, ["rate"])
+
+            if rate_col is None:
+                for i in range(len(header_low)):
+                    sample_vals = [get_val(r, i) for r in cleaned[header_idx + 1:]]
                     if any(is_rate_or_na(v) for v in sample_vals):
                         rate_col = i
                         break
 
             prev_origin = ""
             prev_dest = ""
-            tier_counter = 0
 
             for row in cleaned[header_idx + 1:]:
                 row = pad_row(row, len(header))
 
-                tier_val = get_col_value(row, tier_col)
-                vol_val = get_col_value(row, vol_col)
-                origin = get_col_value(row, origin_col)
-                dest = get_col_value(row, dest_col)
-                rate_val = get_col_value(row, rate_col)
+                origin = get_val(row, origin_col)
+                dest = get_val(row, dest_col)
+                rate_val = get_val(row, rate_col)
 
                 if origin:
                     prev_origin = origin
@@ -1481,82 +1591,14 @@ def extract_page11(pdf):
                 else:
                     dest = prev_dest
 
-                # skip incomplete rows instead of hard-coding values
                 if not origin or not dest or not rate_val:
                     continue
 
-                min_bpd, max_bpd = ("", "")
-                source_for_bpd = vol_val if vol_val and "bpd" in vol_val.lower() else tier_val
-                if source_for_bpd and "bpd" in source_for_bpd.lower():
-                    min_bpd, max_bpd = parse_bpd_header_to_minmax(source_for_bpd)
-
-                derived_tier = ""
-                if page_rate_tiers and tier_counter < len(page_rate_tiers):
-                    derived_tier = page_rate_tiers[tier_counter]
-                    tier_counter += 1
-                elif tier_val and re.search(r"\b(?:tier)\s*(\d+|[IVXLC]+)\b", tier_val, re.IGNORECASE):
-                    match = re.search(r"\b(?:tier)\s*(\d+|[IVXLC]+)\b", tier_val, re.IGNORECASE)
-                    if match:
-                        derived_tier = f"Rate Tier {match.group(1).upper()}"
-
-                add_record(origin, dest, rate_val, derived_tier, min_bpd, max_bpd)
+                add_record(origin, dest, rate_val, "", "", "")
 
             continue
-
-        # ---------------------------------------------------------
-        # TABLE 3: Buckingham Barrel Rate table
-        # ---------------------------------------------------------
-        # if "buckingham" in flat_text and "barrel rate" in flat_text:
-        header_idx = find_header_row(cleaned, ["origin", "destination"])
-        if header_idx is None:
-            continue
-
-        header = cleaned[header_idx]
-        header_low = [h.lower() for h in header]
-
-        origin_col = find_col_index(header_low, ["origin"])
-        dest_col = find_col_index(header_low, ["destination"])
-        rate_col = find_col_index(header_low, ["rate"])
-
-        if rate_col is None:
-            for i in range(len(header_low)):
-                sample_vals = [get_col_value(r, i) for r in cleaned[header_idx + 1:]]
-                if any(is_rate_or_na(v) for v in sample_vals):
-                    rate_col = i
-                    break
-
-        prev_origin = ""
-        prev_dest = ""
-
-        for row in cleaned[header_idx + 1:]:
-            row = pad_row(row, len(header))
-
-            origin = get_col_value(row, origin_col)
-            dest = get_col_value(row, dest_col)
-            rate_val = get_col_value(row, rate_col)
-
-            if origin:
-                prev_origin = origin
-            else:
-                origin = prev_origin
-
-            if dest:
-                prev_dest = dest
-            else:
-                dest = prev_dest
-
-            if not origin or not dest or not rate_val:
-                continue
-
-            # no hard-coded RateTier text
-            add_record(origin, dest, rate_val, "", "", "")
-
-            # continue
 
     return records
-
-
-
 
 
 
@@ -1586,16 +1628,16 @@ if __name__ == "__main__":
         # df_rates8 = extract_page8(pdf)
         # tariff_data.extend(df_rates8)
 
-        df_rates9 = extract_page9(pdf)
-        tariff_data.extend(df_rates9)
+        # df_rates9 = extract_page9(pdf)
+        # tariff_data.extend(df_rates9)
 
-        # df_rates10 = extract_page10(pdf)
-        # tariff_data.extend(df_rates10)
+        df_rates10 = extract_page10(pdf)
+        tariff_data.extend(df_rates10)
 
         # df_rates11 = extract_page11(pdf)
         # tariff_data.extend(df_rates11)
 
-        # df_rates12 = extract_rates_table_for_Page3_4_12_13_14_15(pdf, 14, 15)
+        # df_rates12 = extract_rates_table_for_Page3_4_12_13_14_15(pdf, 11, 15)
         # tariff_data.extend(df_rates12)
 
         
@@ -1604,7 +1646,7 @@ if __name__ == "__main__":
     if final_data is not None and len(final_data) > 0:
 
         # Export to CSV
-        output_file = "sample_tariff_data_v2.csv"
+        output_file = "sample_tariff_data_v5.csv"
         final_data.to_csv(output_file, index=False)
         print(f"\nData successfully exported to {output_file}")
     else:

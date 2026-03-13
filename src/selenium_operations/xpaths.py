@@ -13,6 +13,8 @@ oil_tariff_program_option = "//td[@id='Content1_dxgrdTariffs_tccell0_1']/a"
 company_name = "//span[@id='Content1_dxgrdTariffs_cell0_0_lblLegal_0']"
 
 # Xpaths for Second page with tariff program details
+actual_tariff_division = "//div[@id='Content1_tvSections']/table[last()-1]"
+
 actual_tariff_option = "//a[@class='Content1_tvSections_0 Content1_tvSections_1']"	
 
 ferc_table = "//table[@id='Content1_dxgrdTariffs_DXMainTable']"

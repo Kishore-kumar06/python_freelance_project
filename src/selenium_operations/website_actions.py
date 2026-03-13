@@ -90,6 +90,25 @@ def click_actual_tariff_option(driver, xpath):
         print(f"Error clicking on Actual Tariff option: {e}")
 
 
+def find_last_value_from_oiltariff(driver, table_xpath):
+    try:
+        table = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.XPATH, table_xpath))
+        )
+        rows = table.find_elements(By.TAG_NAME, "tr")
+        if len(rows) > 1:
+            last_row = rows[-1]
+            cells = last_row.find_elements(By.TAG_NAME, "td")
+            # return [cell.text.strip() for cell in cells]
+            effective_button = cells[3].find_element(By.TAG_NAME, "a")
+            return effective_button
+        else:
+            print("No records found in the table.")
+            return None
+    except (Exception, NoSuchElementException, TimeoutException) as e:
+        print(f"Error finding last record in table: {e}")
+        return None
+
 # This function finds the last record in the table and checks if the effective file option is present in the last record. If it is present, it clicks on the effective link. If not, it returns False.
 def find_last_record_in_table(driver, table_xpath):
     try:

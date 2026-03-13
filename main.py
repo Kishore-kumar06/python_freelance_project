@@ -1,8 +1,8 @@
 from selenium.webdriver.common.by import By
-from src.data_processing.pandas_operations import clean_data
+from src.data_processing.pandas_operations import read_and_clean_csv
 from src.selenium_operations.website_actions import (navigate_to_url, select_tariff_program, enter_company_name, button_click_function, click_actual_tariff_option, find_last_record_in_table, get_company_name_from_results, get_oil_tariff_program_from_results, switch_to_iframe)
 from src.selenium_operations.driver_setup import open_browser, driver_options, close_browser, quit_browser, back_browser
-from src.selenium_operations.xpaths import tariff_program_dropdown, company_name_input, find_tariff_button, no_files_message, oil_tariff_program_option, actual_tariff_option, company_name, ferc_table, effective_file_option, download_file_option, close, iframe
+from src.selenium_operations.xpaths import tariff_program_dropdown, company_name_input, find_tariff_button, no_files_message, oil_tariff_program_option, actual_tariff_division, actual_tariff_option, company_name, ferc_table, effective_file_option, download_file_option, close, iframe
 from src.data_processing.tracker import create_pipeline_folder, create_excel_tracker_files
 import time
 import os
@@ -16,7 +16,7 @@ if __name__ == "__main__":
     effective_file = ""
 
     url = "https://etariff.ferc.gov/TariffList.aspx"
-    pipelines = clean_data(r"D:\Project\python_freelance_project\data\source_files\available_pipelines.csv")
+    pipelines = read_and_clean_csv(r"D:\Project\python_freelance_project\data\source_files\available_pipelines_v2.csv")
     tracker_files_path = r"D:\Project\python_freelance_project\data"
 
     if pipelines is not None:
@@ -47,7 +47,7 @@ if __name__ == "__main__":
                     name_of_the_company = get_company_name_from_results(driver, company_name)
                     button_click_function(driver, oil_tariff_program_option)
                     time.sleep(2)  # Wait for the tariff program page to load
-                    click_actual_tariff_option(driver, actual_tariff_option)
+                    click_actual_tariff_option(driver, actual_tariff_division)
                     time.sleep(2)  # Wait for the actual tariff page to load
 
                     is_efective_file = find_last_record_in_table(driver, ferc_table)
@@ -55,12 +55,12 @@ if __name__ == "__main__":
                     effective_file = is_efective_file.text.strip()
                     is_efective_file.click()
                     
-                    time.sleep(2)  # Wait for the effective file to load
-                    switch_to_iframe(driver, iframe)
-                    time.sleep(2)  # Wait for the iframe to load
-                    switch_to_iframe(driver, iframe)
-                    # driver.switch_to.frame("GB_frame")
-                    # driver.switch_to.frame(driver.find_element(By.XPATH, iframe))
+                    time.sleep(2)  # Wait for the effective file to load   
+                    # switch_to_iframe(driver, iframe)
+                    # time.sleep(2)  # Wait for the iframe to load
+                    # switch_to_iframe(driver, iframe)
+                    driver.switch_to.frame("GB_frame")
+                    driver.switch_to.frame(driver.find_element(By.XPATH, iframe))
                     
                     time.sleep(2)  # Wait for the iframe to load
                     button_click_function(driver, download_file_option)
